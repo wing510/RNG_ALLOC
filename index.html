@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>Web/Bin 設定+分配 v14</title>
+
+  <style>
+    body {
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      font-size: 18px;
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      margin-bottom: 12px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      font-size: 13px;
+      text-align: left;
+    }
+    th {
+      background: #fafafa;
+    }
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px 6px;
+      font-size: 13px;
+    }
+.kta-row {
+  display: flex;
+  gap: 4px;
+}
+.kta {
+  width: 60px !important;
+  padding: 4px 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+    .row-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .row-line label {
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    .row-line input[type="number"] {
+      width: 80px;
+    }
+    .btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid #999;
+      background: #f0f0f0;
+      cursor: pointer;
+      margin-right: 6px;
+    }
+    .btn-primary {
+      border-color: #007bff;
+      background: #007bff;
+      color: #fff;
+    }
+    .btn-danger {
+      border-color: #dc3545;
+      background: #dc3545;
+      color: #fff;
+    }
+    .btn[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .card {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      background: #fff;
+      margin-bottom: 16px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #777;
+      margin-top: 4px;
+    }
+    .step-title {
+      margin-bottom: 4px;
+    }
+    #summary-area {
+      margin-top: 10px;
+      max-height: 320px;
+      overflow: auto;
+      font-size: 12px;
+    }
+/* 固定 Red% 與 Other% 為 4 位數寬度 */
+.web-red,
+.web-other {
+  width: 60px !important;
+}
+/* TG 格式 與 TG Cnt 一樣寬 */
+.web-tg-format,
+.web-tg-cnt {
+  width: 80px !important;   /* 可改 70、90 都可以 */
+}
+/* 重新設定大萬/小萬 右邊格子寬度 */
+#red-big,
+#red-small {
+  width: 130px !important;   /* 想要寬一點改這裡 */
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- 步驟 1 -->
+  <h2 class="step-title">步驟 1：設定 Web &amp; Bin</h2>
+
+  <div class="card">
+    <h3 style="margin:0;font-size:16px;">Web 設定</h3>
+    <div class="hint">
+      ・每一列 Web 的 <strong>Key + TG + ARA = 100</strong><br>
+      ・全部 Web 的 <strong>Red%</strong> = 100<br>
+      ・全部 Web + Bin 的 <strong>Other%</strong> = 100<br>
+      ・TG 格式可選：星期 ID 號碼 大-小 或 ID 星期 號碼 大-小<br>
+    </div>
+
+    <table id="web-table">
+      <thead>
+        <tr>
+          <th>Co. Name</th>
+          <th>ARA ID</th>
+          <th>TG ID</th>
+          <th>TG 格式</th>
+          <th>TG Cnt</th>
+          <th>Key / TG / ARA</th>
+          <th>Red %</th>
+          <th>Other %</th>
+          <th>刪除</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button class="btn" id="add-web-row-btn">+ 新增 Web 列</button>
+  </div>
+
+  <!-- Bin 設定 -->
+  <div class="card">
+    <h3 style="margin:0;font-size:16px;">Bin 設定</h3>
+    <div class="hint">
+      ・全部 Web + Bin 的 Other% = 100<br>
+      ・Bin 只有 ARA（沒有 Key/TG）
+    </div>
+
+    <table id="bin-table">
+      <thead>
+        <tr>
+          <th>Co. Name</th>
+          <th>ARA ID</th>
+          <th>Other %</th>
+          <th>刪除</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button class="btn" id="add-bin-row-btn">+ 新增 Bin 列</button>
+  </div>
+
+  <!-- 步驟 2 -->
+  <h2 class="step-title">步驟 2：上傳檔案</h2>
+
+  <div class="card">
+    <div class="row-line">
+      <label>上傳紅字 TXT：</label>
+      <input type="file" id="red-file" accept=".txt">
+      <label>重新設定大萬：</label>
+      <input type="number" id="red-big" placeholder="不填則保留原本" step="0.01">
+      <label>重新設定小萬：</label>
+      <input type="number" id="red-small" placeholder="不填則保留原本" step="0.01">
+    </div>
+
+    <div class="row-line">
+      <label>上傳其他字 TXT：</label>
+      <input type="file" id="other-file" accept=".txt">
+      <label>星期：</label>
+      <input type="number" id="other-week" step="1">
+    </div>
+  </div>
+
+  <!-- 步驟 3 -->
+  <h2 class="step-title">步驟 3：分配 & 下載（Web/Bin分開下載）</h2>
+
+  <div class="card">
+    <div class="hint">
+      ・先按「❶ 分配並顯示比例」產生結果<br>
+      ・❷ 下載 Web_ARA → 只下載 Web-ARA txt<br>
+      ・❸ 下載 Web_KEY/TG → 只下載 Web-Key + Web-TG txt<br>
+      ・❹ 下載 Bin → Bin-ARA 各自一個 txt<br>
+      ・不使用 ZIP，不會被 Windows 擋<br>
+    </div>
+
+    <div style="margin-top:6px;">
+      <button class="btn-primary" id="allocate-btn">❶ 分配並顯示比例</button>
+      <button class="btn" id="rerun-btn" disabled>重新分配</button>
+      <button class="btn" id="download-web-ara-btn" disabled>❷ 下載 Web_ARA 檔案</button>
+      <button class="btn" id="download-web-keytg-btn" disabled>❸ 下載 Web_KEY/TG 檔案</button>
+      <button class="btn" id="download-bin-btn" disabled>❹ 下載 Bin 檔案</button>
+      <button class="btn" id="download-all-btn" disabled>❺ 下載 Download_All 檔案</button>
+    </div>
+
+    <div id="summary-area" class="hint"></div>
+  </div>
+
+<script>
+/* ---------------------------------------------------------
+   全域變數 & DOM
+--------------------------------------------------------- */
+const webTableBody = document.querySelector('#web-table tbody');
+const binTableBody = document.querySelector('#bin-table tbody');
+
+const redFileInput = document.getElementById('red-file');
+const otherFileInput = document.getElementById('other-file');
+const redBigInput = document.getElementById('red-big');
+const redSmallInput = document.getElementById('red-small');
+const otherWeekInput = document.getElementById('other-week');
+
+const allocateBtn = document.getElementById('allocate-btn');
+const rerunBtn = document.getElementById('rerun-btn');
+const downloadWebAraBtn = document.getElementById('download-web-ara-btn');
+const downloadWebKeyTgBtn = document.getElementById('download-web-keytg-btn');
+const downloadBinBtn = document.getElementById('download-bin-btn');
+const downloadAllBtn = document.getElementById('download-all-btn');
+const summaryArea = document.getElementById('summary-area');
+
+let redFileContent = '';
+let otherFileContent = '';
+let lastOutputs = null;
+
+/* ---------------------------------------------------------
+   強制檢查：星期必填
+--------------------------------------------------------- */
+function validateWeekRequired() {
+  const week = otherWeekInput.value.trim();
+  if (week === "") {
+    alert("請先填寫『星期』");
+    return false;
+  }
+  return true;
+}
+
+/* ---------------------------------------------------------
+   工具函式
+--------------------------------------------------------- */
+function rand() { return Math.random(); }
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+function bigSmallDash(b, s) {
+  b = b || 0;
+  s = s || 0;
+  if (b > 0 && s > 0) return `${b}-${s}`;
+  if (b > 0 && s == 0) return `${b}-`;
+  if (b == 0 && s > 0) return `-${s}`;
+  return `-`;
+}
+
+function formatKeyLine(r) {
+  return `${r.num} ${bigSmallDash(r.big, r.small)}`;
+}
+
+function padLeft(str, width) {
+  str = String(str);
+  if (str.length >= width) return str;
+  return " ".repeat(width - str.length) + str;
+}
+
+function formatAraLine(r, araIdOverride) {
+  const dateStr = r.date || "";
+  let araId = araIdOverride || r.araId || "";
+  const b = r.big || 0;
+  const s = r.small || 0;
+
+  const bigField   = b > 0 ? padLeft(b, 4) : "    ";
+  const smallField = s > 0 ? padLeft(s, 3) : "   ";
+
+  // ARA ID 若少於 4 個字元，補空白到長度 4
+  if (araId.length < 4) {
+    araId = araId + " ".repeat(4 - araId.length);
+  }
+
+  return `${dateStr}+${r.num}+${bigField}+${smallField}+${araId}*1|N`;
+}
+
+/* ---------------------------------------------------------
+   建立 Web / Bin 列
+--------------------------------------------------------- */
+function createWebRow() {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" class="web-co-name"></td>
+    <td><input type="text" class="web-ara-id"></td>
+    <td><input type="text" class="web-tg-id"></td>
+
+    <td>
+      <select class="web-tg-format">
+        <option value="dateFirst">星期 ID</option>
+        <option value="tgFirst">ID 星期</option>
+      </select>
+    </td>
+
+    <td><input type="text" class="web-tg-cnt" placeholder="5-10"></td>
+
+    <td>
+      <div class="kta-row">
+        <input type="number" class="kta kta-key" placeholder="Key" step="0.01">
+        <input type="number" class="kta kta-tg"  placeholder="TG"  step="0.01">
+        <input type="number" class="kta kta-ara" placeholder="ARA" step="0.01">
+      </div>
+    </td>
+
+    <td><input type="number" class="web-red" step="0.01"></td>
+    <td><input type="number" class="web-other" step="0.01"></td>
+
+    <td><button class="btn-danger btn-delete-row">刪除</button></td>
+  `;
+  tr.querySelector(".btn-delete-row").onclick = () => tr.remove();
+  return tr;
+}
+
+function createBinRow() {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" class="bin-co-name"></td>
+    <td><input type="text" class="bin-ara-id"></td>
+    <td><input type="number" class="bin-other-percent" step="0.01"></td>
+    <td><button class="btn-danger btn-delete-row">刪除</button></td>
+  `;
+  tr.querySelector(".btn-delete-row").onclick = () => tr.remove();
+  return tr;
+}
+
+/* ---------------------------------------------------------
+   上傳紅字 / 其他字
+--------------------------------------------------------- */
+redFileInput.addEventListener("change", e => {
+  const f = e.target.files[0];
+  redFileContent = "";
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    redFileContent = reader.result || "";
+    console.log("紅字檔案已讀取");
+  };
+  reader.readAsText(f, "utf-8");
+});
+
+otherFileInput.addEventListener("change", e => {
+  const f = e.target.files[0];
+  otherFileContent = "";
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    otherFileContent = reader.result || "";
+    console.log("其他字檔案已讀取");
+  };
+  reader.readAsText(f, "utf-8");
+});
+
+/* ---------------------------------------------------------
+   解析紅字（號碼 大 小，允許覆蓋大萬/小萬）
+--------------------------------------------------------- */
+function parseRedNumbers(cfg) {
+  const res = [];
+  const txt = cfg.red.content || "";
+
+  const overrideBig =
+    cfg.red.big !== undefined && cfg.red.big !== "" ? Number(cfg.red.big) : null;
+  const overrideSmall =
+    cfg.red.small !== undefined && cfg.red.small !== "" ? Number(cfg.red.small) : null;
+
+  txt.split(/\r?\n/).forEach(line => {
+    const s = line.trim();
+    if (!s) return;
+
+    const parts = s.split(/\s+/);
+    const numOnly = parts[0];
+
+    if (!/^\d{4}$/.test(numOnly)) return;
+
+    let originalBig = 0;
+    let originalSmall = 0;
+
+    if (parts.length >= 3) {
+      const b = Number(parts[1]);
+      const sm = Number(parts[2]);
+      if (!Number.isNaN(b)) originalBig = b;
+      if (!Number.isNaN(sm)) originalSmall = sm;
+    }
+
+    res.push({
+      num: numOnly,
+      baseNum: numOnly,
+      displayNum: numOnly,
+      big: overrideBig !== null ? overrideBig : originalBig,
+      small: overrideSmall !== null ? overrideSmall : originalSmall,
+      isRed: true,
+      isRoll: false
+    });
+  });
+
+  return res;
+}
+
+/* ---------------------------------------------------------
+   解析其他字（含 r 號碼）
+--------------------------------------------------------- */
+function parseOtherNumbers(cfg) {
+  const res = [];
+  const txt = cfg.other.content || "";
+
+  txt.split(/\r?\n/).forEach(line => {
+    const s = line.trim();
+    if (!s) return;
+
+    const parts = s.split(/\s+/);
+    if (parts.length < 3) return;
+
+    let head = parts[0];
+    let bigStr = parts[1];
+    let smallStr = parts[2];
+
+    let isRoll = false;
+    let baseNum = "";
+
+    if (/^\d{4}r$/i.test(head)) {
+      isRoll = true;
+      baseNum = head.slice(0, 4);
+    } else if (/^\d{4}$/.test(head)) {
+      baseNum = head;
+    } else {
+      return;
+    }
+
+    const big = Number(bigStr);
+    const small = Number(smallStr);
+    if (Number.isNaN(big) || Number.isNaN(small)) return;
+
+    res.push({
+      num: head,
+      displayNum: head,
+      baseNum,
+      big,
+      small,
+      isRed: false,
+      isRoll
+    });
+  });
+
+  return res;
+}
+
+/* ---------------------------------------------------------
+   取得 Web/Bin 設定 & 驗證百分比
+--------------------------------------------------------- */
+function getCurrentConfig() {
+  const web = [...webTableBody.querySelectorAll("tr")].map(tr => ({
+    coName: tr.querySelector(".web-co-name").value.trim(),
+    araId:  tr.querySelector(".web-ara-id").value.trim(),
+    tgId:   tr.querySelector(".web-tg-id").value.trim(),
+    tgFormat: tr.querySelector(".web-tg-format").value,
+    tgCnt: tr.querySelector(".web-tg-cnt").value.trim(),
+    keyVal:   tr.querySelector(".kta-key").value,
+    tgVal:    tr.querySelector(".kta-tg").value,
+    araVal:   tr.querySelector(".kta-ara").value,
+    redPercent:   tr.querySelector(".web-red").value,
+    otherPercent: tr.querySelector(".web-other").value
+  }));
+
+  const bin = [...binTableBody.querySelectorAll("tr")].map(tr => ({
+    coName: tr.querySelector(".bin-co-name").value.trim(),
+    araId:  tr.querySelector(".bin-ara-id").value.trim(),
+    otherPercent: tr.querySelector(".bin-other-percent").value
+  }));
+
+  return {
+    web,
+    bin,
+    red: {
+      content: redFileContent,
+      big: redBigInput.value,
+      small: redSmallInput.value
+    },
+    other: {
+      content: otherFileContent,
+      week: otherWeekInput.value
+    }
+  };
+}
+
+/* ---------------------------------------------------------
+   驗證百分比
+--------------------------------------------------------- */
+function validatePercents(cfg) {
+  const epsilon = 0.001;
+  let sumRed = 0;
+  let sumOther = 0;
+
+  // Web
+  cfg.web.forEach((w, idx) => {
+    const r = w.redPercent ? Number(w.redPercent) : 0;
+    const o = w.otherPercent ? Number(w.otherPercent) : 0;
+    sumRed += r;
+    sumOther += o;
+
+    const key = w.keyVal ? Number(w.keyVal) : 0;
+    const tg  = w.tgVal  ? Number(w.tgVal)  : 0;
+    const ara = w.araVal ? Number(w.araVal) : 0;
+    const sumKTA = key + tg + ara;
+
+    if (key || tg || ara) {
+      if (Math.abs(sumKTA - 100) > epsilon) {
+        alert(`第 ${idx+1} 列 Web 的 Key+TG+ARA 必須 = 100`);
+        throw "break";
+      }
+    }
+  });
+
+  // Bin
+  cfg.bin.forEach(b => {
+    const o = b.otherPercent ? Number(b.otherPercent) : 0;
+    sumOther += o;
+  });
+
+  if (Math.abs(sumRed - 100) > epsilon) {
+    alert(`全部 Web 的 Red % 必須 = 100，目前為 ${sumRed}`);
+    return false;
+  }
+  if (Math.abs(sumOther - 100) > epsilon) {
+    alert(`全部 Web+Bin 的 Other % 必須 = 100，目前為 ${sumOther}`);
+    return false;
+  }
+  return true;
+}
+
+/* ---------------------------------------------------------
+   分配核心 allocateOnce()
+--------------------------------------------------------- */
+function allocateOnce() {
+  const cfg = getCurrentConfig();
+  if (!validatePercents(cfg)) return null;
+
+  const redList   = parseRedNumbers(cfg);
+  const otherList = parseOtherNumbers(cfg);
+  const pool = [...redList, ...otherList];
+
+  const dateVal = cfg.other.week || "";
+
+  const webList = cfg.web.map((w, idx) => ({
+    index: idx,
+    coName: w.coName || `Web${idx+1}`,
+    araId:  w.araId || "",
+    tgId:   w.tgId || "",
+    tgFormat: w.tgFormat,
+    keyPct:  w.keyVal   ? Number(w.keyVal)   : 0,
+    tgPct:   w.tgVal    ? Number(w.tgVal)    : 0,
+    araPct:  w.araVal   ? Number(w.araVal)   : 0,
+    redPct:  w.redPercent   ? Number(w.redPercent)   : 0,
+    otherPct:w.otherPercent ? Number(w.otherPercent) : 0
+  }));
+
+  const binList = cfg.bin.map((b, idx) => ({
+    index: idx,
+    coName: b.coName || `Bin${idx+1}`,
+    araId:  b.araId || "",
+    otherPct: b.otherPercent ? Number(b.otherPercent) : 0
+  }));
+
+  const webRedWeights   = webList.map(w => Math.max(0, w.redPct));
+  const webOtherWeights = webList.map(w => Math.max(0, w.otherPct));
+  const binOtherWeights = binList.map(b => Math.max(0, b.otherPct));
+
+  const outputs = {};
+
+  function ensureWebKey(co, tg) {
+    const key = `web-key::${co}::${tg}`;
+    if (!outputs[key]) outputs[key] = { type: "web-key", coName: co, tgId: tg, list: [] };
+    return outputs[key];
+  }
+  function ensureWebTg(co, tg, fmt) {
+    const key = `web-tg::${co}::${tg}`;
+    if (!outputs[key]) outputs[key] = { type: "web-tg", coName: co, tgId: tg, tgFormat: fmt, list: [] };
+    return outputs[key];
+  }
+  function ensureWebAra(co, ara) {
+    const key = `web-ara::${co}::${ara}`;
+    if (!outputs[key]) outputs[key] = { type: "web-ara", coName: co, araId: ara, list: [] };
+    return outputs[key];
+  }
+  function ensureBinAra(co, ara) {
+    const key = `bin-ara::${co}::${ara}`;
+    if (!outputs[key]) outputs[key] = { type: "bin-ara", coName: co, araId: ara, list: [] };
+    return outputs[key];
+  }
+
+  function pickIndex(weights) {
+    const total = weights.reduce((s, x) => s + x, 0);
+    if (total <= 0) return -1;
+    let r = rand() * total;
+    for (let i = 0; i < weights.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return i;
+    }
+    return weights.length - 1;
+  }
+
+  /* ------------------- 分配 ------------------- */
+  for (const obj of pool) {
+    const isRed  = obj.isRed;
+    const isRoll = !!obj.isRoll;
+    const num    = obj.displayNum;
+    const big    = obj.big;
+    const small  = obj.small;
+
+    /* ----- 紅字 ----- */
+    if (isRed) {
+      const idx = pickIndex(webRedWeights);
+      const w = webList[idx];
+      const t = w.keyPct + w.tgPct + w.araPct;
+
+      if (t <= 0) {
+        ensureWebAra(w.coName, w.araId).list.push({ num, big, small, date: dateVal, isRoll });
+        continue;
+      }
+
+      let r = rand() * t;
+      if (r <= w.keyPct) {
+        ensureWebKey(w.coName, w.tgId).list.push({ num, big, small, isRoll });
+      } else if (r <= w.keyPct + w.tgPct) {
+        ensureWebTg(w.coName, w.tgId, w.tgFormat).list.push({ num, big, small, date: dateVal, isRoll });
+      } else {
+        ensureWebAra(w.coName, w.araId).list.push({ num, big, small, date: dateVal, isRoll });
+      }
+      continue;
+    }
+
+    /* ----- r 號碼 ----- */
+    if (isRoll) {
+      const candidateIdx = [];
+      const candidateWeights = [];
+
+      webList.forEach((w, i) => {
+        const canTakeR = (webOtherWeights[i] > 0) && ((w.keyPct + w.tgPct) > 0);
+        if (canTakeR) {
+          candidateIdx.push(i);
+          candidateWeights.push(webOtherWeights[i]);
+        }
+      });
+
+      if (!candidateIdx.length) {
+        alert("有 r 號碼，但沒有任何可接收 r 的 Web（需 Other% > 0 且 Key+TG > 0）");
+        return null;
+      }
+
+      const pickPos = pickIndex(candidateWeights);
+      const wIndex = candidateIdx[pickPos];
+      const w = webList[wIndex];
+
+      const t = w.keyPct + w.tgPct;
+      let rVal = rand() * t;
+
+      if (rVal <= w.keyPct) {
+        ensureWebKey(w.coName, w.tgId).list.push({ num, big, small, isRoll });
+      } else {
+        ensureWebTg(w.coName, w.tgId, w.tgFormat).list.push({ num, big, small, date: dateVal, isRoll });
+      }
+      continue;
+    }
+
+    /* ----- 其他字 ----- */
+    const totalOther =
+      webOtherWeights.reduce((s, x) => s + x, 0) +
+      binOtherWeights.reduce((s, x) => s + x, 0);
+
+    if (totalOther <= 0) continue;
+
+    let r = rand() * totalOther;
+    let acc = 0;
+    let target = null;
+
+    for (let i = 0; i < webList.length; i++) {
+      acc += webOtherWeights[i];
+      if (r <= acc) { target = { kind: "web", i }; break; }
+    }
+    if (!target) {
+      for (let i = 0; i < binList.length; i++) {
+        acc += binOtherWeights[i];
+        if (r <= acc) { target = { kind: "bin", i }; break; }
+      }
+    }
+    if (!target) continue;
+
+    if (target.kind === "bin") {
+      const bObj = binList[target.i];
+      ensureBinAra(bObj.coName, bObj.araId)
+        .list.push({ num, big, small, date: dateVal, isRoll });
+    } else {
+      const w = webList[target.i];
+      const t2 = w.keyPct + w.tgPct + w.araPct;
+      if (t2 <= 0) {
+        ensureWebAra(w.coName, w.araId).list.push({ num, big, small, date: dateVal, isRoll });
+        continue;
+      }
+
+      let r2 = rand() * t2;
+      let acc2 = w.keyPct;
+      if (r2 <= acc2) {
+        ensureWebKey(w.coName, w.tgId).list.push({ num, big, small, isRoll });
+        continue;
+      }
+      acc2 += w.tgPct;
+      if (r2 <= acc2) {
+        ensureWebTg(w.coName, w.tgId, w.tgFormat).list.push({ num, big, small, date: dateVal, isRoll });
+        continue;
+      }
+      ensureWebAra(w.coName, w.araId).list.push({ num, big, small, date: dateVal, isRoll });
+    }
+  }
+
+  return outputs;
+}
+
+/* ---------------------------------------------------------
+   SUMMARY 顯示
+--------------------------------------------------------- */
+function buildSummary(outputs) {
+  const rows = [];
+
+  Object.keys(outputs).sort().forEach(k => {
+    const o = outputs[k];
+    const arr = o.list;
+    const total = arr.length;
+    const rollCount = arr.filter(x => x.isRoll).length;
+    const pct = total === 0 ? 0 : (rollCount * 100 / total);
+
+    let fileName = "";
+    let typeName = "";
+
+    if (o.type === "web-key") {
+      fileName = `${o.coName}_${o.tgId}_KEY`;
+      typeName = "KEY";
+    }
+    if (o.type === "web-tg") {
+      fileName = `${o.coName}_${o.tgId}_TG`;
+      typeName = "TG";
+    }
+    if (o.type === "web-ara") {
+      fileName = `${o.coName}_${o.araId}_ARA(Web)`;
+      typeName = "ARA(Web)";
+    }
+    if (o.type === "bin-ara") {
+      fileName = `${o.coName}_${o.araId}_ARA(Bin)`;
+      typeName = "ARA(Bin)";
+    }
+
+    rows.push(`
+      <tr>
+        <td>${fileName}</td>
+        <td>${typeName}</td>
+        <td>${total}</td>
+        <td>${rollCount}</td>
+        <td>${total - rollCount}</td>
+        <td>${pct.toFixed(2)}%</td>
+      </tr>
+    `);
+  });
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>檔案名稱</th>
+          <th>類型</th>
+          <th>總筆數</th>
+          <th>r 數量</th>
+          <th>非 r</th>
+          <th>r%</th>
+        </tr>
+      </thead>
+      <tbody>${rows.join("")}</tbody>
+    </table>
+  `;
+}
+
+/* ---------------------------------------------------------
+   下載單一 TXT
+--------------------------------------------------------- */
+function downloadTextFile(filename, content) {
+  if (content == null) content = "";
+  const crlfContent = content.replace(/\r?\n/g, "\r\n");
+  const blob = new Blob([crlfContent], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------------------------------------------------
+   依 outputs 建立內容
+--------------------------------------------------------- */
+function buildFileContent(o) {
+  const list = o.list;
+  if (!list.length) return "";
+
+  let content = "";
+
+  if (o.type === "web-key") {
+    shuffle(list);
+    content = list.map(r => formatKeyLine(r)).join("\n");
+  }
+
+  if (o.type === "web-tg") {
+    shuffle(list);
+    content = list.map(r => {
+      const date = r.date || "";
+      const bs = bigSmallDash(r.big, r.small);
+      if (o.tgFormat === "tgFirst") {
+        return `${o.tgId} ${date} ${r.num} ${bs}`.trim();
+      }
+      return `${date} ${o.tgId} ${r.num} ${bs}`.trim();
+    }).join("\n");
+  }
+
+  if (o.type === "web-ara" || o.type === "bin-ara") {
+    shuffle(list);
+    content = list.map(r => formatAraLine(r, o.araId)).join("\n");
+  }
+
+  return content;
+}
+
+/* ---------------------------------------------------------
+   下載 Download_All（整合全部檔案）
+--------------------------------------------------------- */
+function buildAllInOne(outputs, redFileContent) {
+
+  function normLines(text) {
+    return text.replace(/\r/g, "").split("\n").filter(l => l.trim() !== "");
+  }
+
+  const sections = [];
+  const keys = Object.keys(outputs || {});
+
+  /* ---------------------------
+     工具：加入一個區塊 section
+  --------------------------- */
+  function pushSection(type, name, lines) {
+    const lineCount = lines.length;
+    let block =
+      `type:${type} ${name}\n` +
+      `line:${lineCount}\n` +
+      lines.join("\n") + "\n" +
+      `endtype:${type} ${name}`;
+    sections.push(block);
+  }
+
+  /* ---------------------------
+     1) ARA (Web + Bin)
+  --------------------------- */
+  keys
+    .map(k => outputs[k])
+    .filter(o => o.type === "web-ara" || o.type === "bin-ara")
+    .sort((a,b)=> `${a.coName}_${a.araId}`.localeCompare(`${b.coName}_${b.araId}`, 'zh-Hant') )
+    .forEach(o => {
+      const fileContent = buildFileContent(o);
+      if (!fileContent) return;
+      const lines = normLines(fileContent);
+      const name = `${o.coName}_${o.araId}_ARA`;
+      pushSection("ara", name, lines);
+    });
+
+  /* ---------------------------
+     2) TG
+  --------------------------- */
+  keys
+    .map(k => outputs[k])
+    .filter(o => o.type === "web-tg")
+    .sort((a,b)=> `${a.coName}_${a.tgId}`.localeCompare(`${b.coName}_${b.tgId}`, 'zh-Hant') )
+    .forEach(o => {
+      const fileContent = buildFileContent(o);
+      if (!fileContent) return;
+      const lines = normLines(fileContent);
+      const name = `${o.coName}_${o.tgId}_TG`;
+      pushSection("tg", name, lines);
+    });
+
+  /* ---------------------------
+     3) KEYIN
+  --------------------------- */
+  keys
+    .map(k => outputs[k])
+    .filter(o => o.type === "web-key")
+    .sort((a,b)=> `${a.coName}_${a.tgId}`.localeCompare(`${b.coName}_${b.tgId}`, 'zh-Hant') )
+    .forEach(o => {
+      const fileContent = buildFileContent(o);
+      if (!fileContent) return;
+      const lines = normLines(fileContent);
+      const name = `${o.coName}_${o.tgId}_KEY`;
+      pushSection("keyin", name, lines);
+    });
+
+  /* ---------------------------
+     4) redfont (固定名稱)
+  --------------------------- */
+  if (redFileContent && redFileContent.trim()) {
+    let lines = redFileContent.replace(/\r/g, "").split("\n");
+    while (lines.length && lines[lines.length - 1].trim() === "") {
+      lines.pop();
+    }
+    pushSection("redfont", "", lines);
+  }
+
+  /* ---------------------------
+     輸出（使用 \n，下載再轉 CRLF）
+  --------------------------- */
+  return sections.join("\n");
+}
+
+/* ---------------------------------------------------------
+   下載 Web_ARA（逐檔下載）
+--------------------------------------------------------- */
+function downloadWebAra(outputs) {
+  const keys = Object.keys(outputs);
+  let count = 0;
+
+  keys.forEach(k => {
+    const o = outputs[k];
+    if (o.type === "web-ara") {
+      const fileContent = buildFileContent(o);
+      if (!fileContent) return;
+
+      const fileName = `${o.coName}_${o.araId}_ARA.txt`;
+      downloadTextFile(fileName, fileContent);
+      count++;
+    }
+  });
+
+  alert(`已下載 Web_ARA 檔案 ${count} 個`);
+}
+
+/* ---------------------------------------------------------
+   下載 Web_KEY/TG（逐檔下載）
+--------------------------------------------------------- */
+function downloadWebKeyTg(outputs) {
+  const keys = Object.keys(outputs);
+  let count = 0;
+
+  keys.forEach(k => {
+    const o = outputs[k];
+    if (o.type === "web-key" || o.type === "web-tg") {
+      const fileContent = buildFileContent(o);
+      if (!fileContent) return;
+
+      let fileName = "";
+      if (o.type === "web-key") fileName = `${o.coName}_${o.tgId}_KEY.txt`;
+      if (o.type === "web-tg")  fileName = `${o.coName}_${o.tgId}_TG.txt`;
+
+      downloadTextFile(fileName, fileContent);
+      count++;
+    }
+  });
+
+  alert(`已下載 Web_KEY/TG 檔案 ${count} 個`);
+}
+
+/* ---------------------------------------------------------
+   下載 Bin（逐檔下載）
+--------------------------------------------------------- */
+function downloadBin(outputs) {
+  const keys = Object.keys(outputs);
+  let count = 0;
+
+  keys.forEach(k => {
+    const o = outputs[k];
+    if (o.type === "bin-ara") {
+      const fileContent = buildFileContent(o);
+      if (!fileContent) return;
+
+      const fileName = `${o.coName}_${o.araId}_ARA.txt`;
+      downloadTextFile(fileName, fileContent);
+      count++;
+    }
+  });
+
+  alert(`已下載 Bin 檔案 ${count} 個`);
+}
+
+/* ---------------------------------------------------------
+   按鈕事件
+--------------------------------------------------------- */
+allocateBtn.onclick = () => {
+  if (!validateWeekRequired()) return;
+  const o = allocateOnce();
+  if (!o) return;
+
+  lastOutputs = o;
+  summaryArea.innerHTML = buildSummary(o);
+
+  rerunBtn.disabled = false;
+  downloadWebAraBtn.disabled = false;
+  downloadWebKeyTgBtn.disabled = false;
+  downloadBinBtn.disabled = false;
+  downloadAllBtn.disabled = false;
+};
+
+rerunBtn.onclick = () => {
+  if (!validateWeekRequired()) return;
+  const o = allocateOnce();
+  if (!o) return;
+
+  lastOutputs = o;
+  summaryArea.innerHTML = buildSummary(o);
+
+  downloadWebAraBtn.disabled = false;
+  downloadWebKeyTgBtn.disabled = false;
+  downloadBinBtn.disabled = false;
+  downloadAllBtn.disabled = false;
+};
+
+downloadWebAraBtn.onclick = () => {
+  if (!lastOutputs) {
+    alert("請先分配");
+    return;
+  }
+  downloadWebAra(lastOutputs);
+};
+
+downloadWebKeyTgBtn.onclick = () => {
+  if (!lastOutputs) {
+    alert("請先分配");
+    return;
+  }
+  downloadWebKeyTg(lastOutputs);
+};
+
+downloadBinBtn.onclick = () => {
+  if (!lastOutputs) {
+    alert("請先分配");
+    return;
+  }
+  downloadBin(lastOutputs);
+};
+
+downloadAllBtn.onclick = () => {
+  if (!lastOutputs) {
+    alert("請先分配");
+    return;
+  }
+  const content = buildAllInOne(lastOutputs, redFileContent || "");
+  if (!content) {
+    alert("沒有可下載的內容");
+    return;
+  }
+  downloadTextFile("download_all.txt", content);
+};
+
+/* ---------------------------------------------------------
+   預設 Web / Bin
+--------------------------------------------------------- */
+function addWebPreset(coName, araId, tgId, tgFormat) {
+  const tr = createWebRow();
+  tr.querySelector(".web-co-name").value = coName;
+  tr.querySelector(".web-ara-id").value = araId;
+  tr.querySelector(".web-tg-id").value = tgId;
+  tr.querySelector(".web-tg-format").value = tgFormat || "dateFirst";
+  webTableBody.appendChild(tr);
+}
+
+function addBinPreset(coName, araId) {
+  const tr = createBinRow();
+  tr.querySelector(".bin-co-name").value = coName;
+  tr.querySelector(".bin-ara-id").value = araId;
+  binTableBody.appendChild(tr);
+}
+
+/* Web 預設 */
+addWebPreset("M999KG", "3K88",   "3K880186",     "dateFirst");
+addWebPreset("M999KB", "3KA01",   "3K010085", "dateFirst");
+addWebPreset("M999KB", "3KA02",   "3K010088", "dateFirst");
+addWebPreset("MM38",  "11G001", "11GPX88", "tgFirst");
+addWebPreset("MM38",  "11G001", "11G139",  "tgFirst");
+
+/* Bin 預設 */
+addBinPreset("BC128",  "K39A");
+addBinPreset("LIAN88", "39A");
+
+/* ---------------------------------------------------------
+   新增按鈕
+--------------------------------------------------------- */
+document.getElementById("add-web-row-btn").onclick = () =>
+  webTableBody.appendChild(createWebRow());
+
+document.getElementById("add-bin-row-btn").onclick = () =>
+  binTableBody.appendChild(createBinRow());
+</script>
+
+</div> <!-- container -->
+
+</body>
+</html>
