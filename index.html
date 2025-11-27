@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Web/Bin 設定與分配 v16</title>
+  <title>Web/Bin 設定與分配 v19</title>
 
   <style>
     :root{
@@ -279,8 +279,11 @@
 #summary-area table td {
   text-align: left !important;
 }
-
   </style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
 </head>
 
 <body>
@@ -387,7 +390,6 @@
 5678 1 2
 8888r 1 0
 （r 會依規則只進 Web-Key 或 Web-TG）
-
 ⚠️ 星期必填，按「分配」與「下載」前會檢查。
     </div>
 
@@ -444,9 +446,9 @@
    ・❷ 下載 Web_ARA → 只下載 Web-ARA
    ・❸ 下載 Web_KEY/TG → 只下載 Web-Key + Web-TG
    ・❹ 下載 Bin → Bin-ARA 各自一個 txt
-   ・❺ 下載 Download_All → 整合全部區塊（新版格式）
+   ・❺ 下載 Download_All → 整合全部區塊（適用RNGsystem）
+   ・❻ 下載 All.rar → 下載Web&Bin全部檔案，需解壓縮
 
-⚠️ 不使用 ZIP（避免 Windows 擋下載）
     </div>
 
     <div class="actions" style="justify-content:flex-start;">
@@ -459,6 +461,7 @@
       <button class="btn" id="download-web-keytg-btn" disabled>❸ 下載 Web_KEY/TG 檔案</button>
       <button class="btn" id="download-bin-btn" disabled>❹ 下載 Bin 檔案</button>
       <button class="btn" id="download-all-btn" disabled>❺ 下載 Download_All 檔案</button>
+      <button class="btn" id="download-all-rar-btn" disabled>❻ 下載 All.rar</button>
     </div>
 
     <div id="summary-area" class="hint"></div>
@@ -498,7 +501,8 @@ const downloadWebAraBtn = document.getElementById('download-web-ara-btn');
 const downloadWebKeyTgBtn = document.getElementById('download-web-keytg-btn');
 const downloadBinBtn = document.getElementById('download-bin-btn');
 const downloadAllBtn = document.getElementById('download-all-btn');
-const summaryArea = document.getElementById('summary-area');
+const downloadAllRarBtn = document.getElementById('download-all-rar-btn'); const summaryArea = document.getElementById('summary-area');
+
 
 let redFileContent = '';
 let otherFileContent = '';
@@ -511,6 +515,17 @@ function validateWeekRequired() {
   const week = otherWeekInput.value.trim();
   if (week === "") {
     alert("請先填寫『星期』");
+    return false;
+  }
+  return true;
+}
+
+/* ---------------------------------------------------------
+   強制檢查：其他字 TXT 必須上傳
+--------------------------------------------------------- */
+function validateOtherFileRequired() {
+  if (!otherFileContent || otherFileContent.trim() === "") {
+    alert("請先上傳『其他字 TXT』");
     return false;
   }
   return true;
@@ -562,6 +577,118 @@ function formatAraLine(r, araIdOverride) {
   }
 
   return `${dateStr}+${r.num}+${bigField}+${smallField}+${araId}*1|N`;
+}
+
+/* ---------------------------------------------------------
+   TG 分組（由 TG Cnt 控制）
+   - TG Cnt 空白或 0：不分組
+   - TG Cnt = "8" 或 "7-10"
+--------------------------------------------------------- */
+function parseTgCntRange(tgCntRaw) {
+  const s = (tgCntRaw || "").trim();
+  if (!s || s === "0") return null;
+
+  const mRange = s.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (mRange) {
+    const minG = parseInt(mRange[1], 10);
+    const maxG = parseInt(mRange[2], 10);
+    if (minG >= 1 && maxG >= minG) return [minG, maxG];
+    throw new Error("TG Cnt 範圍不合法，需 >=1 且 max>=min");
+  }
+
+  const mNum = s.match(/^\d+$/);
+  if (mNum) {
+    const v = parseInt(s, 10);
+    if (v >= 1) return [v, v];
+  }
+
+  throw new Error("TG Cnt 格式必須是單一數字(如 8) 或範圍(如 7-10)");
+}
+
+function parseTgLine(line) {
+  const parts = line.trim().split(/\s+/);
+  if (parts.length >= 4) {
+    return {
+      prefix: parts[0] + " " + parts[1],
+      code: parts[2],
+      marker: parts[3]
+    };
+  }
+  const m = line.trim().match(/^(\S+\s+\S+)\s+(\S+)\s+(\S+)\s*$/);
+  if (m) return { prefix: m[1], code: m[2], marker: m[3] };
+  return null;
+}
+
+function combineTgSlice(lines, startIdx, count, badLines) {
+  const slice = lines.slice(startIdx, startIdx + count);
+  const parsed = [];
+
+  for (const raw of slice) {
+    const p = parseTgLine(raw);
+    if (p) parsed.push(p);
+    else badLines.push(raw);
+  }
+  if (parsed.length === 0) return null;
+
+  const prefix = parsed[0].prefix;
+  const groups = [];
+  const seen = new Map();
+
+  for (const item of parsed) {
+    const { code, marker } = item;
+    if (!seen.has(marker)) {
+      seen.set(marker, groups.length);
+      groups.push({ marker, codes: [] });
+    }
+    groups[seen.get(marker)].codes.push(code);
+  }
+
+  const out = [prefix];
+  for (const g of groups) {
+    out.push(g.codes.join(" "));
+    out.push(g.marker);
+  }
+  return out.join(" ").trim();
+}
+
+function groupTgLines(lines, tgCntRaw) {
+  let range;
+  try {
+    range = parseTgCntRange(tgCntRaw);
+  } catch (e) {
+    alert(e.message || e);
+    return lines; // TG Cnt 不合法就回退不分組
+  }
+  if (!range) return lines;
+
+  const [minG, maxG] = range;
+  let i = 0;
+  const results = [];
+  const badLines = [];
+
+  while (i < lines.length) {
+    const remaining = lines.length - i;
+    let groupSize;
+
+    if (remaining < minG) {
+      groupSize = remaining;
+    } else {
+      groupSize = Math.min(
+        remaining,
+        Math.floor(rand() * (maxG - minG + 1)) + minG
+      );
+    }
+
+    const combined = combineTgSlice(lines, i, groupSize, badLines);
+    if (combined) results.push(combined);
+
+    i += groupSize;
+  }
+
+  if (badLines.length) {
+    console.warn("TG grouping bad lines:", badLines);
+  }
+  return results;
 }
 
 /* ---------------------------------------------------------
@@ -842,6 +969,7 @@ function allocateOnce() {
     araId:  w.araId || "",
     tgId:   w.tgId || "",
     tgFormat: w.tgFormat,
+    tgCnt: w.tgCnt, // ★新增：把 TG Cnt 帶進來
     keyPct:  w.keyVal   ? Number(w.keyVal)   : 0,
     tgPct:   w.tgVal    ? Number(w.tgVal)    : 0,
     araPct:  w.araVal   ? Number(w.araVal)   : 0,
@@ -867,11 +995,21 @@ function allocateOnce() {
     if (!outputs[key]) outputs[key] = { type: "web-key", coName: co, tgId: tg, list: [] };
     return outputs[key];
   }
-  function ensureWebTg(co, tg, fmt) {
-    const key = `web-tg::${co}::${tg}`;
-    if (!outputs[key]) outputs[key] = { type: "web-tg", coName: co, tgId: tg, tgFormat: fmt, list: [] };
-    return outputs[key];
+function ensureWebTg(co, tg, fmt, cnt) {
+  const key = `web-tg::${co}::${tg}`;
+  if (!outputs[key]) {
+    outputs[key] = {
+      type: "web-tg",
+      coName: co,
+      tgId: tg,
+      tgFormat: fmt,
+      tgCnt: cnt || "", // ★新增：記住 TG Cnt
+      list: []
+    };
   }
+  return outputs[key];
+}
+
   function ensureWebAra(co, ara) {
     const key = `web-ara::${co}::${ara}`;
     if (!outputs[key]) outputs[key] = { type: "web-ara", coName: co, araId: ara, list: [] };
@@ -917,7 +1055,8 @@ function allocateOnce() {
       if (r <= w.keyPct) {
         ensureWebKey(w.coName, w.tgId).list.push({ num, big, small, isRoll });
       } else if (r <= w.keyPct + w.tgPct) {
-        ensureWebTg(w.coName, w.tgId, w.tgFormat).list.push({ num, big, small, date: dateVal, isRoll });
+        ensureWebTg(w.coName, w.tgId, w.tgFormat, w.tgCnt)
+  .list.push({ num, big, small, date: dateVal, isRoll });
       } else {
         ensureWebAra(w.coName, w.araId).list.push({ num, big, small, date: dateVal, isRoll });
       }
@@ -952,7 +1091,8 @@ function allocateOnce() {
       if (rVal <= w.keyPct) {
         ensureWebKey(w.coName, w.tgId).list.push({ num, big, small, isRoll });
       } else {
-        ensureWebTg(w.coName, w.tgId, w.tgFormat).list.push({ num, big, small, date: dateVal, isRoll });
+        ensureWebTg(w.coName, w.tgId, w.tgFormat, w.tgCnt)
+  .list.push({ num, big, small, date: dateVal, isRoll });
       }
       continue;
     }
@@ -1000,7 +1140,8 @@ function allocateOnce() {
       }
       acc2 += w.tgPct;
       if (r2 <= acc2) {
-        ensureWebTg(w.coName, w.tgId, w.tgFormat).list.push({ num, big, small, date: dateVal, isRoll });
+        ensureWebTg(w.coName, w.tgId, w.tgFormat, w.tgCnt)
+  .list.push({ num, big, small, date: dateVal, isRoll });
         continue;
       }
       ensureWebAra(w.coName, w.araId).list.push({ num, big, small, date: dateVal, isRoll });
@@ -1102,16 +1243,26 @@ function buildFileContent(o) {
   }
 
   if (o.type === "web-tg") {
-    shuffle(list);
-    content = list.map(r => {
-      const date = r.date || "";
-      const bs = bigSmallDash(r.big, r.small);
-      if (o.tgFormat === "tgFirst") {
-        return `${o.tgId} ${date} ${r.num} ${bs}`.trim();
-      }
-      return `${date} ${o.tgId} ${r.num} ${bs}`.trim();
-    }).join("\n");
+  shuffle(list);
+
+  // 先照原本格式產生每筆 raw line
+  let rawLines = list.map(r => {
+    const date = r.date || "";
+    const bs = bigSmallDash(r.big, r.small);
+    if (o.tgFormat === "tgFirst") {
+      return `${o.tgId} ${date} ${r.num} ${bs}`.trim();
+    }
+    return `${date} ${o.tgId} ${r.num} ${bs}`.trim();
+  });
+
+  // ★若有 TG Cnt，就套用分組
+  if (o.tgCnt && o.tgCnt.trim() && o.tgCnt.trim() !== "0") {
+    rawLines = groupTgLines(rawLines, o.tgCnt);
   }
+
+  content = rawLines.join("\n");
+}
+
 
   if (o.type === "web-ara" || o.type === "bin-ara") {
     shuffle(list);
@@ -1217,28 +1368,38 @@ function downloadWebAra(outputs) {
 }
 
 /* ---------------------------------------------------------
-   下載 Web_KEY/TG（逐檔下載）
+   ❸ ZIP 下載 Web_KEY/TG（單一 ZIP）
 --------------------------------------------------------- */
-function downloadWebKeyTg(outputs) {
-  const keys = Object.keys(outputs);
+async function downloadWebKeyTg(outputs) {
+  const zip = new JSZip();
   let count = 0;
 
-  keys.forEach(k => {
+  const keys = Object.keys(outputs);
+
+  for (const k of keys) {
     const o = outputs[k];
     if (o.type === "web-key" || o.type === "web-tg") {
       const fileContent = buildFileContent(o);
-      if (!fileContent) return;
+      if (!fileContent) continue;
 
       let fileName = "";
       if (o.type === "web-key") fileName = `${o.coName}_${o.tgId}_KEY.txt`;
       if (o.type === "web-tg")  fileName = `${o.coName}_${o.tgId}_TG.txt`;
 
-      downloadTextFile(fileName, fileContent);
+      // 轉成 CRLF
+      const crlfContent = fileContent.replace(/\r?\n/g, "\r\n");
+      zip.file(fileName, crlfContent);
       count++;
     }
-  });
+  }
 
-  alert(`已下載 Web_KEY/TG 檔案 ${count} 個`);
+  if (count === 0) {
+    alert("沒有可下載的 Web_KEY/TG 檔案");
+    return;
+  }
+
+  const blob = await zip.generateAsync({ type: "blob" });
+  saveAs(blob, "Web_KEY_TG.rar");
 }
 
 /* ---------------------------------------------------------
@@ -1264,10 +1425,80 @@ function downloadBin(outputs) {
 }
 
 /* ---------------------------------------------------------
+   ❻ 下載 All.rar（包含 Web_ARA / Web_KEYTG / Bin / Download_All）
+--------------------------------------------------------- */
+async function downloadAllRar(outputs, redFileContent) {
+  const zip = new JSZip();
+  let fileCount = 0;
+
+  /* ---- 1. Web_ARA ---- */
+  Object.keys(outputs).forEach(k => {
+    const o = outputs[k];
+    if (o.type === "web-ara") {
+      const txt = buildFileContent(o);
+      if (!txt) return;
+      const name = `${o.coName}_${o.araId}_ARA.ara`;
+      zip.file(name, txt.replace(/\r?\n/g, "\r\n"));
+      fileCount++;
+    }
+  });
+
+  /* ---- 2. Web_KEY / Web_TG ---- */
+  Object.keys(outputs).forEach(k => {
+    const o = outputs[k];
+    if (o.type === "web-key" || o.type === "web-tg") {
+      const txt = buildFileContent(o);
+      if (!txt) return;
+
+      let name = "";
+      if (o.type === "web-key") name = `${o.coName}_${o.tgId}_KEY.txt`;
+      if (o.type === "web-tg")  name = `${o.coName}_${o.tgId}_TG.txt`;
+
+      zip.file(name, txt.replace(/\r?\n/g, "\r\n"));
+      fileCount++;
+    }
+  });
+
+  /* ---- 3. Bin ARA ---- */
+  Object.keys(outputs).forEach(k => {
+    const o = outputs[k];
+    if (o.type === "bin-ara") {
+      const txt = buildFileContent(o);
+      if (!txt) return;
+      const name = `${o.coName}_${o.araId}_ARA.ara`;
+      zip.file(name, txt.replace(/\r?\n/g, "\r\n"));
+      fileCount++;
+    }
+  });
+
+  /* ---- 4. download_all.txt（整合區塊） ---- */
+  const allTxt = buildAllInOne(outputs, redFileContent || "");
+  zip.file("download_all.txt", allTxt.replace(/\r?\n/g, "\r\n"));
+  fileCount++;
+
+  if (fileCount === 0) {
+    alert("沒有任何檔案可供下載");
+    return;
+  }
+
+const blob = await zip.generateAsync({ type: "blob" });
+
+// 產生今天日期：ddmmyyyy
+const now = new Date();
+const dd = String(now.getDate()).padStart(2, "0");
+const mm = String(now.getMonth() + 1).padStart(2, "0");
+const yyyy = now.getFullYear();
+const fileName = `${dd}${mm}${yyyy}.rar`;
+
+saveAs(blob, fileName);
+}
+
+/* ---------------------------------------------------------
    按鈕事件
 --------------------------------------------------------- */
 allocateBtn.onclick = () => {
   if (!validateWeekRequired()) return;
+  if (!validateOtherFileRequired()) return;   // ★ 新增
   const o = allocateOnce();
   if (!o) return;
 
@@ -1279,10 +1510,13 @@ allocateBtn.onclick = () => {
   downloadWebKeyTgBtn.disabled = false;
   downloadBinBtn.disabled = false;
   downloadAllBtn.disabled = false;
+  downloadAllRarBtn.disabled = false; // ❻ 開啟
 };
 
 rerunBtn.onclick = () => {
   if (!validateWeekRequired()) return;
+  if (!validateOtherFileRequired()) return;   // ★ 新增
+
   const o = allocateOnce();
   if (!o) return;
 
@@ -1293,6 +1527,7 @@ rerunBtn.onclick = () => {
   downloadWebKeyTgBtn.disabled = false;
   downloadBinBtn.disabled = false;
   downloadAllBtn.disabled = false;
+  downloadAllRarBtn.disabled = false;
 };
 
 downloadWebAraBtn.onclick = () => {
@@ -1332,6 +1567,15 @@ downloadAllBtn.onclick = () => {
   downloadTextFile("download_all.txt", content);
 };
 
+downloadAllRarBtn.onclick = () => {
+  if (!lastOutputs) {
+    alert("請先分配");
+    return;
+  }
+  // 直接呼叫前面已經寫好的 downloadAllRar()
+  downloadAllRar(lastOutputs, redFileContent || "");
+};
+
 /* ---------------------------------------------------------
    預設 Web / Bin
 --------------------------------------------------------- */
@@ -1353,14 +1597,14 @@ function addBinPreset(coName, araId) {
 
 /* Web 預設 */
 addWebPreset("M999KG", "3K88",   "3K880186", "dateFirst");
-addWebPreset("M999KB1", "3K01",  "3K010085", "dateFirst");
-addWebPreset("M999KB2", "3K01",  "3K010088", "dateFirst");
+addWebPreset("M999KB", "3KA01",  "3K010085", "dateFirst");
+addWebPreset("M999KB", "3KA02",  "3K010088", "dateFirst");
 addWebPreset("MM38",   "11G001", "11GPX88",  "tgFirst");
 addWebPreset("MM38",   "11G001", "11G139",   "tgFirst");
 
 /* Bin 預設 */
-addBinPreset("BC128",  "K39");
-addBinPreset("LIAN88", "39");
+addBinPreset("BC128",  "K39A");
+addBinPreset("LIAN88", "39A");
 
 /* ---------------------------------------------------------
    新增按鈕
